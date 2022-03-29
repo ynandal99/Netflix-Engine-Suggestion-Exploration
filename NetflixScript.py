@@ -95,14 +95,15 @@ driver.maximize_window()
 # stay_signed_in_btn.click()
 # =============================================================================
 
-engine.say('NOW, Login into netflix please!')
+engine.say('Beginning Search!')
 engine.runAndWait()
 
 cnt=0
-
+master_json = {}
+    
 # fun to click on search icon and send search text
 def search(text):
-    global cnt
+    global cnt, master_json
     cnt+=1
     srch_btn = driver.find_element_by_xpath('//*[@class="icon-search"]')
     srch_btn.click()
@@ -118,75 +119,50 @@ def search(text):
         if cnt<=3:
             search(text)
 
-search("Murdoch Mysteries")
-
-# wait for slow loads
-
-time.sleep(2)
-
-# save images and titles
-
-srch_results = driver.find_elements_by_xpath('//*[@class="title-card-container css-0"]') 
-
-master_json = {}
-
-for y in srch_results:
-    x = y.get_attribute('innerHTML')
+    # wait for slow loads
     
-    x = x.replace(r'%22',r'"')
-    x = x.replace(r'%7D',r'}')
-    x = x.replace(r'%7B',r'{')
-    x = x.replace(r'%7C',r'|')
-    x = x.replace(r'%20',r' ')
+    time.sleep(2)
     
-    json_info = json.loads(re.findall('"{.*?}"', x)[0][1:-1])
-    master_json.update(json_info)
-    img_url = y.find_element_by_xpath('//*[@class="ptrack-content"]').find_element_by_tag_name('img').get_attribute('src')
-    img_name = y.text
-    img_name = re.sub(r'[":\-();*!@#$%^&=`~+,.<>?/\n"]', "_",img_name)
-    print(img_name)
-# =============================================================================
-#     if f'{img_name}.jpg' not in os.listdir():
-#         urllib.request.urlretrieve(img_url, f'{img_name}.jpg')
-# =============================================================================
+    # save images and titles
+    
+    srch_results = driver.find_elements_by_xpath('//*[@class="title-card"]') 
+    
+    for y in srch_results:
+        global homedir
+        folder_name = text
+        try:
+            os.chdir(homedir)
+            os.makedirs(folder_name)
+            os.chdir(folder_name)
+        except:
+            os.chdir(homedir)
+            os.chdir(folder_name)
+            print("Folder Already exists, vidoes may be overwritten")
+        
+        x = y.get_attribute('innerHTML')
+        
+        x = x.replace(r'%22',r'"')
+        x = x.replace(r'%7D',r'}')
+        x = x.replace(r'%7B',r'{')
+        x = x.replace(r'%7C',r'|')
+        x = x.replace(r'%20',r' ')
+        
+        json_info = json.loads(re.findall('"{.*?}"', x)[0][1:-1])
+        master_json.update(json_info)
+        img_url = re.findall('src=.*?" ', x)[0][5:-2]
+        img_name = y.text
+        img_name = re.sub(r'[":\-();*!@#$%^&=`~+,.<>?/\n"]', "_",img_name)
+        if f'{img_name}.jpg' not in os.listdir():
+            urllib.request.urlretrieve(img_url, f'{img_name}.jpg')
+
+text = "Murdoch Mysteries"
+search(text)
 
 cols = []
 
 tn_dict = {}
 
 
-for s in srch_results:
-    s.click()
-    time.sleep(2)
-    video = WebDriverWait(driver, 40).until(EC.visibility_of_element_located((By.XPATH, '//*[@class="vjs-tech"]')))
-    video_url = video.get_property('src')    
-    videoname = driver.title
-    videoname = re.sub(r'[":\-();*!@#$%^&=`~+,.<>?/\n"]', "_",videoname)
-    if f'{ctr}_{videoname}.mp4' not in os.listdir():
-        urllib.request.urlretrieve(video_url, f'{ctr}_{videoname}.mp4')
 
-
-engine.say('All videos downloaded. Enjoy')
+engine.say('All results published. Enjoy')
 engine.runAndWait()
-
-# Make folder 
-
-try:
-    folder_name = WebDriverWait(driver, 40).until(EC.visibility_of_element_located((By.XPATH, '//*[@class="clamp-1 t-16 t-bold t-white "]'))).text
-    folder_name = re.sub(r'[":\-();*!@#$%^&=`~+,.<>?/\n"]', "_",folder_name)
-except:
-    driver.refresh() 
-    time.sleep(3)
-    folder_name = WebDriverWait(driver, 40).until(EC.visibility_of_element_located((By.XPATH, '//*[@class="clamp-1 t-16 t-bold t-white "]'))).text
-    folder_name = re.sub(r'[":\-();*!@#$%^&=`~+,.<>?/\n"]', "_",folder_name)
-    
-try:
-    os.chdir(homedir)
-    os.makedirs(folder_name)
-    os.chdir(folder_name)
-except:
-    os.chdir(homedir)
-    os.chdir(folder_name)
-    print("Folder Already exists, vidoes may be overwritten")
-
-ctr = 0
