@@ -75,7 +75,8 @@ engine.setProperty('rate', 165)
 driver.get(r'https://www.netflix.com/ca/Login')
 driver.maximize_window()   
 
-print("Please login then answer the following questions only in specified format : \n")
+engine.say("Please login then answer the following questions only in specified format")
+engine.runAndWait()
 
 # =============================================================================
 # login_btn = driver.find_element_by_xpath('//*[@id="id_userLoginId"]')
@@ -93,10 +94,6 @@ uname = str(input('Please enter Netflix viewer Name:\n'))
 uage = int(input('Please enter Netflix viewer Age (as integer):\n'))
 ugender = str(input('Please enter Netflix viewer Gender (M/F only):\n'))
 
-engine.say('Beginning Search! Do not move your mouse or press any keys until script finishes.')
-engine.runAndWait()
-
-master_json = {}
 # Specify search depth (the more the depth, more times page will be scrolled to load more results), default = 1, max=5
 flag = True
 while flag:
@@ -105,22 +102,28 @@ while flag:
         flag = False
     else:
         print("Enter valid input from 1 to 5")
+        
+engine.say('Beginning Search! Make Chrome window active on screen and Do not move your mouse or press any keys until script finishes.')
+engine.runAndWait()
+
+master_json = {}
+
 
 text_list = pd.read_csv('searchTerms.csv')
 text_list = text_list['terms'].to_list()
         
 # fun to click on search icon and send search text (pass a list in here)
 def search(text_list):
-    global master_json, driver
+    global master_json, driver, search_depth
     for text in text_list:
         cnt=0
         local_json = {}
         driver.get(r'https://www.netflix.com/browse')
-        srch_btn = driver.find_element_by_xpath('//*[@class="icon-search"]')
+        srch_btn = WebDriverWait(driver, 2).until(EC.visibility_of_element_located((By.XPATH, '//*[@class="icon-search"]')))
         srch_btn.click()
-        srch_field = driver.find_element_by_xpath('//*[@class="searchInput"]')
+        srch_field = WebDriverWait(driver, 2).until(EC.visibility_of_element_located((By.XPATH, '//*[@class="searchInput"]')))
         srch_field.click()
-        srch_in_field = driver.find_element_by_xpath('//*[@name="searchInput"]')
+        srch_in_field = WebDriverWait(driver, 2).until(EC.visibility_of_element_located((By.XPATH, '//*[@name="searchInput"]')))
         srch_in_field.click()    
         try:
             if srch_in_field.is_displayed():
@@ -158,7 +161,10 @@ def search(text_list):
             hov = ActionChains(driver).move_to_element(y)
             hov.perform()
             try:
-                maturity_number = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.XPATH, '//*[@class="maturity-number"]'))).text
+                try:
+                    maturity_number = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.XPATH, '//*[@class="maturity-number"]'))).text
+                except:
+                    maturity_number = ''
                 try:
                     match_score = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.XPATH, '//*[@class="match-score"]'))).text[:3]
                 except:
@@ -168,13 +174,19 @@ def search(text_list):
                     genre = [e.text for e in driver.find_elements_by_xpath('//*[@class="evidence-text"]')]
                     genre = ','.join(genre)
                 except:
-                    genre = ''                
-                duration = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.XPATH, '//*[@class="duration"]'))).text
+                    genre = '' 
+                try:
+                    duration = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.XPATH, '//*[@class="duration"]'))).text
+                except:
+                    duration=''
                 body.send_keys(Keys.ESCAPE)
             except:
                 body.send_keys(Keys.ESCAPE)
                 hov.perform()   
-                maturity_number = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.XPATH, '//*[@class="maturity-number"]'))).text
+                try:
+                    maturity_number = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.XPATH, '//*[@class="maturity-number"]'))).text
+                except:
+                    maturity_number = ''
                 try:
                     match_score = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.XPATH, '//*[@class="match-score"]'))).text[:3]
                 except:
@@ -185,7 +197,10 @@ def search(text_list):
                     genre = ','.join(genre)
                 except:
                     genre = ''             
-                duration = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.XPATH, '//*[@class="duration"]'))).text              
+                try:
+                    duration = WebDriverWait(driver, 1).until(EC.visibility_of_element_located((By.XPATH, '//*[@class="duration"]'))).text
+                except:
+                    duration=''
                 body.send_keys(Keys.ESCAPE)
     
             x = x.replace(r'%22',r'"')
@@ -202,7 +217,7 @@ def search(text_list):
             json_info['duration'] = duration            
             json_info['genre'] = genre        
             local_json[img_name] = json_info
-            img_name = re.sub(r'[":\-();*!@#$%^&=`~+,.<>?/\n"]', "_",img_name)
+            img_name = re.sub(r'[":|\-();*!@#$%^&=`~+,.<>?/\n"]', "_",img_name)
             if f'{img_name}.jpg' not in os.listdir():
                 urllib.request.urlretrieve(img_url, f'{img_name}.jpg')
         #update master json
@@ -266,11 +281,11 @@ def search(text_list):
     df = df.set_index('SearchText')
     cur_time = time.ctime()
     cur_time = cur_time.replace(':','_')
+    os.chdir(homedir)
     df.to_csv(f'SearchResults_{cur_time}.csv',index=True)
 
-# change the HARD CODED value
-text = "Sherlock Holmes"
-search(text)
+# send search items list to function
+search(text_list)
 
     
 engine.say('All results published. Enjoy')
