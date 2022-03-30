@@ -106,15 +106,15 @@ while flag:
 engine.say('Beginning Search! Make Chrome window active on screen and Do not move your mouse or press any keys until script finishes.')
 engine.runAndWait()
 
-master_json = {}
-
 
 text_list = pd.read_csv('searchTerms.csv')
 text_list = text_list['terms'].to_list()
         
 # fun to click on search icon and send search text (pass a list in here)
-def search(text_list):
-    global master_json, driver, search_depth
+def search(text_list): 
+    global master_json, driver, search_depth, json_info
+    master_json = {}
+    json_info = {}       
     for text in text_list:
         cnt=0
         local_json = {}
@@ -218,8 +218,9 @@ def search(text_list):
             json_info['genre'] = genre        
             local_json[img_name] = json_info
             img_name = re.sub(r'[":|\-();*!@#$%^&=`~+,.<>?/\n"]', "_",img_name)
+            rank = int(json_info['rank']) + 1
             if f'{img_name}.jpg' not in os.listdir():
-                urllib.request.urlretrieve(img_url, f'{img_name}.jpg')
+                urllib.request.urlretrieve(img_url, f'{rank}_{img_name}.jpg')
         #update master json
         master_json[text] = local_json
     
